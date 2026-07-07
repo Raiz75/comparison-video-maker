@@ -1,13 +1,12 @@
 __pycache__/
 *.pyc
 temp_tts/
-output/
 test_imgs/
 _tmp_audio.m4a
 
-character/
-*.mp4
-tts/
-*.onnx
-*.bin
-
+assets/character/*
+!assets/character/.gitkeep
+assets/tts/*
+!assets/tts/.gitkeep
+output/*
+!output/.gitkeep
