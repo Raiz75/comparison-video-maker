@@ -1,0 +1,21 @@
+{
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 24
+  },
+  "layout": {
+    "sec1_height": 540,
+    "sec2_height": 120,
+    "sec3_height": 180,
+    "sec4_height": 1080,
+    "image_margin": 10,
+    "text_padding": 40
+  },
+  "fonts": {
+    "item_name_size": 48,
+    "script_size": 64,
+    "item_font": "Arial Bold",
+    "script_font": "Arial"
+  }
+}
