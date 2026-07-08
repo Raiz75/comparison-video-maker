@@ -153,7 +153,7 @@ def _ensure_models():
 # ── TTS pipeline ─────────────────────────────────────────────────────────────
 _tts_counter = 0
 
-def _generate_tts(text, voice="am_santa", speed=1.15):
+def _generate_tts(text, voice="am_santa", speed=1):
     global _tts_counter
     TTS_TEMP_DIR.mkdir(exist_ok=True)
     _tts_counter += 1
@@ -188,8 +188,8 @@ def _cleanup_temp():
 def render_comparison_video(script_data, image_paths, char_dir, bg_music_path, output_path, log_fn=print, cancel_event=None):
     _ensure_models()
 
-    if not isinstance(script_data, list) or len(script_data) != 3:
-        raise ValueError("Script data must be a list of exactly 3 pairs")
+    if not isinstance(script_data, list) or len(script_data) < 1:
+        raise ValueError("Script data must be a non-empty list of pairs")
 
     if cancel_event and cancel_event.is_set():
         log_fn("Cancelled.")

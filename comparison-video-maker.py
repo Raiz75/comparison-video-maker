@@ -12,8 +12,10 @@ from render_comparison import render_comparison_video
 BASE_DIR   = Path(__file__).parent
 CHAR_DIR   = BASE_DIR / "assets" / "character"
 TTS_DIR    = BASE_DIR / "assets" / "tts"
-OUTPUT_DIR = BASE_DIR / "output"
+IMAGES_DIR  = BASE_DIR / "assets" / "images"
+OUTPUT_DIR  = BASE_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
+IMAGES_DIR.mkdir(exist_ok=True)
 PROMPTS_DIR = BASE_DIR / "assets" / "prompt"
 
 MASTER_PROMPT_PATH = PROMPTS_DIR / "master prompt-comparizon.txt"
@@ -21,6 +23,10 @@ MASTER_PROMPT = MASTER_PROMPT_PATH.read_text(encoding="utf-8")
 
 MUSIC_EXTS = {".mp3", ".wav", ".m4a", ".ogg", ".aac"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+
+BATCH_VIDEOS = 14
+BATCH_PAIRS   = 42   # 14 × 3
+BATCH_IMAGES  = 84   # 14 × 6
 
 def _scan_assets(folder, exts):
     try:
@@ -54,20 +60,35 @@ def _extract_image_prompts(text):
             prompts_lines.append(line)
     return "\n".join(prompts_lines) if prompts_lines else "(No image prompts section found)"
 
+def _scan_images():
+    try:
+        images = []
+        for f in IMAGES_DIR.iterdir():
+            if f.suffix.lower() in IMAGE_EXTS:
+                m = re.match(r'(\d+)', f.stem)
+                if m:
+                    images.append((int(m.group(1)), f))
+        images.sort(key=lambda x: x[0])
+        return [str(f[1]) for f in images]
+    except Exception:
+        return []
+
 
 class ComparisonVideoApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Comparison Video Maker")
-        self.root.geometry("750x820")
+        self.root.geometry("750x860")
         self.root.configure(bg="#1a1a2e")
         self.root.resizable(False, False)
 
         self.status_var   = tk.StringVar(value="Ready.")
         self.progress_var = tk.DoubleVar(value=0)
         self.cancel_event = threading.Event()
-        self.image_paths  = [tk.StringVar() for _ in range(6)]
-        self.bg_music_var = tk.StringVar()
+        self.image_paths    = [tk.StringVar() for _ in range(6)]
+        self.bg_music_var   = tk.StringVar()
+        self.batch_mode     = tk.BooleanVar(value=False)
+        self.auto_scanned   = []
         self._build_ui()
         self._refresh_asset_status()
 
@@ -81,7 +102,7 @@ class ComparisonVideoApp:
         tk.Label(self.root, text="COMPARISON VIDEO MAKER",
                  font=("Consolas", 14, "bold"),
                  bg="#1a1a2e", fg="#e94560").pack(pady=(14, 2))
-        tk.Label(self.root, text="TikTok / YT Shorts  •  1080×1920  •  3 pairs",
+        tk.Label(self.root, text="TikTok / YT Shorts  •  1080×1920  •  3 pairs per video",
                  font=("Consolas", 9), bg="#1a1a2e", fg="#666").pack(pady=(0, 6))
 
         # Copy Master Prompt button
@@ -143,13 +164,35 @@ class ComparisonVideoApp:
                                   bd=1, relief="flat", padx=10, pady=6)
         img_frame.pack(fill="x", padx=16, pady=(0, 6))
 
+        # Toolbar: auto-scan + batch mode
+        toolbar = tk.Frame(img_frame, bg="#16213e")
+        toolbar.pack(fill="x", pady=(0, 4))
+        tk.Button(toolbar, text="Scan & Auto-Fill Images", font=("Consolas", 8),
+                  bg="#0f3460", fg="#a8d8ea",
+                  relief="flat", cursor="hand2", padx=8,
+                  command=self._auto_fill_images).pack(side="left", padx=(0, 10))
+        tk.Checkbutton(toolbar, text="Batch Mode (14 videos)", font=("Consolas", 8),
+                       bg="#16213e", fg="#ccc", variable=self.batch_mode,
+                       selectcolor="#16213e",
+                       command=self._toggle_batch_mode).pack(side="left")
+
+        # Batch status label (hidden by default)
+        self.batch_status = tk.Label(img_frame, text="", font=("Consolas", 8),
+                                     bg="#16213e", fg="#7fcc7f", anchor="w")
+        self.batch_status.pack(fill="x", pady=(0, 4))
+        self.batch_status.pack_forget()
+
+        # Manual image rows container
+        self.manual_img_container = tk.Frame(img_frame, bg="#16213e")
+        self.manual_img_container.pack(fill="x")
+
         labels = [
             "Pair 1 — Image A:", "Pair 1 — Image B:",
             "Pair 2 — Image A:", "Pair 2 — Image B:",
             "Pair 3 — Image A:", "Pair 3 — Image B:",
         ]
         for i, lbl in enumerate(labels):
-            row = tk.Frame(img_frame, bg="#16213e")
+            row = tk.Frame(self.manual_img_container, bg="#16213e")
             row.pack(fill="x", pady=1)
             tk.Label(row, text=lbl, font=("Consolas", 8),
                      bg="#16213e", fg="#ccc", width=18, anchor="w").pack(side="left")
@@ -245,6 +288,31 @@ class ComparisonVideoApp:
         chars = _scan_assets(CHAR_DIR, {".mp4"})
         self.status_label.config(text=f"Character videos: {len(chars)}  |  TTS models ready")
 
+    def _auto_fill_images(self):
+        scanned = _scan_images()
+        if len(scanned) < 6:
+            self.log(f"Warning: only {len(scanned)} images found, need at least 6")
+            self.status_var.set(f"Need 6+ images, found {len(scanned)}")
+            return
+        self.auto_scanned = scanned
+        for i in range(6):
+            self.image_paths[i].set(scanned[i])
+        self.log(f"Auto-filled {len(scanned)} images from assets/images/")
+        self.status_var.set(f"Auto-filled: first 6 of {len(scanned)} images")
+
+    def _toggle_batch_mode(self):
+        if self.batch_mode.get():
+            self.manual_img_container.pack_forget()
+            scanned = _scan_images()
+            self.auto_scanned = scanned
+            self.batch_status.config(
+                text=f"Batch mode: {len(scanned)} images found in assets/images/  "
+                     f"(need {BATCH_IMAGES} for 14 videos)")
+            self.batch_status.pack(fill="x", pady=(0, 4))
+        else:
+            self.batch_status.pack_forget()
+            self.manual_img_container.pack(fill="x")
+
     def _copy_master_prompt(self):
         self.root.clipboard_clear()
         self.root.clipboard_append(MASTER_PROMPT)
@@ -280,17 +348,26 @@ class ComparisonVideoApp:
             messagebox.showerror("Parse Error", f"Could not parse JSON:\n{e}")
             return
 
-        if not isinstance(script_data, list) or len(script_data) != 3:
-            messagebox.showerror("Invalid Script", "Must contain exactly 3 pairs.")
+        expected_pairs = BATCH_PAIRS if self.batch_mode.get() else 3
+        if not isinstance(script_data, list) or len(script_data) != expected_pairs:
+            msg = f"Script must contain exactly {expected_pairs} pairs (found {len(script_data) if isinstance(script_data, list) else 'N/A'})"
+            messagebox.showerror("Invalid Script", msg)
             return
 
-        # Check images
-        missing = [(i, v.get()) for i, v in enumerate(self.image_paths) if not v.get()]
-        if missing:
-            idx = missing[0][0]
-            pair_label = f"Pair {idx//2 + 1}, Image {'A' if idx%2==0 else 'B'}"
-            messagebox.showerror("Missing Image", f"Please select an image for {pair_label}.")
-            return
+        expected_images = BATCH_IMAGES if self.batch_mode.get() else 6
+        if self.batch_mode.get():
+            self.auto_scanned = _scan_images()
+            if len(self.auto_scanned) < expected_images:
+                messagebox.showerror("Missing Images",
+                    f"Batch mode needs {expected_images} images in assets/images/, found {len(self.auto_scanned)}.")
+                return
+        else:
+            missing = [(i, v.get()) for i, v in enumerate(self.image_paths) if not v.get()]
+            if missing:
+                idx = missing[0][0]
+                pair_label = f"Pair {idx//2 + 1}, Image {'A' if idx%2==0 else 'B'}"
+                messagebox.showerror("Missing Image", f"Please select an image for {pair_label}.")
+                return
 
         self.cancel_event.clear()
         self.progress_var.set(0)
@@ -315,30 +392,62 @@ class ComparisonVideoApp:
 
     def _run_pipeline(self, script_data):
         try:
-            img_paths = [v.get() for v in self.image_paths]
             bg_music = self.bg_music_var.get().strip() or None
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            out_path = OUTPUT_DIR / f"comparison_{ts}.mp4"
-
-            self.status_var.set("Rendering...")
-            self.log("Starting video generation...")
 
             def ui_log(msg):
                 self.log(msg)
 
-            render_comparison_video(
-                script_data=script_data,
-                image_paths=img_paths,
-                char_dir=CHAR_DIR,
-                bg_music_path=bg_music,
-                output_path=str(out_path),
-                log_fn=ui_log,
-                cancel_event=self.cancel_event,
-            )
+            if self.batch_mode.get():
+                total = BATCH_VIDEOS
+                self.log(f"Starting batch: {total} videos...")
+                for v in range(total):
+                    if self.cancel_event.is_set():
+                        self.log("Batch cancelled by user.")
+                        break
+                    chunk = script_data[v * 3 : (v + 1) * 3]
+                    imgs = self.auto_scanned[v * 6 : (v + 1) * 6]
+                    out_path = OUTPUT_DIR / f"comparison_{ts}_video_{v+1:02d}.mp4"
 
-            self.status_var.set(f"Done! Video saved to {out_path.name}")
-            self.log(f"Output: {out_path}")
-            self.progress_var.set(100)
+                    self.status_var.set(f"Video {v+1}/{total} — Rendering...")
+                    self.log(f"--- Video {v+1}/{total} ---")
+
+                    render_comparison_video(
+                        script_data=chunk,
+                        image_paths=imgs,
+                        char_dir=CHAR_DIR,
+                        bg_music_path=bg_music,
+                        output_path=str(out_path),
+                        log_fn=ui_log,
+                        cancel_event=self.cancel_event,
+                    )
+
+                    self.progress_var.set((v + 1) / total * 100)
+                    self.log(f"Video {v+1}/{total} saved: {out_path.name}")
+
+                self.status_var.set(f"Batch done! {total} videos saved.")
+                self.log("Batch complete.")
+                self.progress_var.set(100)
+            else:
+                img_paths = [v.get() for v in self.image_paths]
+                out_path = OUTPUT_DIR / f"comparison_{ts}.mp4"
+
+                self.status_var.set("Rendering...")
+                self.log("Starting video generation...")
+
+                render_comparison_video(
+                    script_data=script_data,
+                    image_paths=img_paths,
+                    char_dir=CHAR_DIR,
+                    bg_music_path=bg_music,
+                    output_path=str(out_path),
+                    log_fn=ui_log,
+                    cancel_event=self.cancel_event,
+                )
+
+                self.status_var.set(f"Done! Video saved to {out_path.name}")
+                self.log(f"Output: {out_path}")
+                self.progress_var.set(100)
         except Exception as e:
             self.status_var.set(f"Error: {e}")
             self.log(f"ERROR: {e}")

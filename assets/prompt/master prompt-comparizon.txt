@@ -34,7 +34,9 @@ Present this message exactly:
 Wait for the user's number. Then generate exactly ONE script based on that theme.
 
 TASK:
-Generate one "This vs. That" comparison script following the EXACT format below. Each script must contain exactly 3 pairs of comparisons — all on the SAME theme.
+Generate one massive "This vs. That" comparison script following the EXACT format below. The script must contain exactly 42 pairs of comparisons — all on the SAME theme.
+
+These 42 pairs will be split into 14 separate videos (3 pairs per video). Each group of 3 pairs should feel like a mini-episode with building energy. Generate variety across the 14 groups — don't repeat the same type of comparison. The funniest or most surprising contrast should go at the end of each group of 3.
 
 SCRIPT FORMAT (5 lines per pair, EXACT order):
 
@@ -93,6 +95,8 @@ First section is IMAGE PROMPTS — one prompt per item for AI image generation. 
 Second section is the SCRIPT JSON. Return BOTH sections in your response.
 
 === IMAGE PROMPTS ===
+Generate image prompts for all 42 pairs (84 images total). Use this format:
+
 Pair 1: [ITEM_A] vs [ITEM_B]
 - Image of [ITEM_A]: [detailed visual prompt for image generation]
 - Image of [ITEM_B]: [detailed visual prompt for image generation]
@@ -101,11 +105,15 @@ Pair 2: [ITEM_A] vs [ITEM_B]
 - Image of [ITEM_A]: [detailed visual prompt for image generation]
 - Image of [ITEM_B]: [detailed visual prompt for image generation]
 
-Pair 3: [ITEM_A] vs [ITEM_B]
+...(continue for all 42 pairs)
+
+Pair 42: [ITEM_A] vs [ITEM_B]
 - Image of [ITEM_A]: [detailed visual prompt for image generation]
 - Image of [ITEM_B]: [detailed visual prompt for image generation]
 
 === SCRIPT ===
+Generate ONE JSON array containing all 42 pair objects. Use this structure:
+
 [
   {
     "pair": 1,
@@ -143,22 +151,21 @@ Pair 3: [ITEM_A] vs [ITEM_B]
       {"pose": "right", "script": "[DISTINCTION FOR B]"}
     ]
   }
+  ...(continue the array for pairs 4 through 42 — exact same structure, all in one JSON array)
 ]
 
-EXAMPLE OUTPUT for theme "Everyday Confusions":
+EXAMPLE (showing first 3 pairs only — your output will include all 42 pairs):
 
 === IMAGE PROMPTS ===
 Pair 1: Frog vs Toad
 - Image of Frog: A smooth-skinned green frog sitting on a lily pad in a pond, wet shiny skin, large eyes, long jumping legs
 - Image of Toad: A bumpy brown toad sitting on dry ground, warty textured skin, squat body, short legs
 
-Pair 2: Turtle vs Tortoise
-- Image of Turtle: A sea turtle swimming in blue ocean water, flippers spread wide, streamlined shell
-- Image of Tortoise: A large tortoise walking on dry grassland, dome-shaped shell, thick elephant-like legs
+...(pairs 2 through 41 would go here)
 
-Pair 3: Assault vs Battery
-- Image of Assault: A person raising a fist threateningly toward someone who is flinching back
-- Image of Battery: A person making physical contact by pushing another person during an argument
+Pair 42: ... vs ...
+- Image of ...: ...
+- Image of ...: ...
 
 === SCRIPT ===
 [
@@ -174,30 +181,13 @@ Pair 3: Assault vs Battery
       {"pose": "right", "script": "the other looks like it survived a war"}
     ]
   },
+  ...(pairs 2 through 41 continue here)
   {
-    "pair": 2,
-    "item_a": "turtle",
-    "item_b": "tortoise",
-    "lines": [
-      {"pose": "left", "script": "this is a turtle"},
-      {"pose": "right", "script": "this is a tortoise"},
-      {"pose": "ask", "script": "what's the difference?"},
-      {"pose": "left", "script": "one lives in water"},
-      {"pose": "right", "script": "the other stays on land"}
-    ]
-  },
-  {
-    "pair": 3,
-    "item_a": "assault",
-    "item_b": "battery",
-    "lines": [
-      {"pose": "left", "script": "this is assault"},
-      {"pose": "right", "script": "this is battery"},
-      {"pose": "ask", "script": "what's the difference?"},
-      {"pose": "left", "script": "assault is threatening harm"},
-      {"pose": "right", "script": "battery is actual physical contact"}
-    ]
+    "pair": 42,
+    "item_a": "...",
+    "item_b": "...",
+    "lines": [ ... ]
   }
 ]
 
-Remember: 3 pairs. Same theme. Funny. Factual. Bite-sized. Return IMAGE PROMPTS section first, then SCRIPT section second.
+Remember: 42 pairs. Same theme. Funny. Factual. Bite-sized. Return IMAGE PROMPTS section first, then SCRIPT section second. The JSON array must contain all 42 pair objects.
