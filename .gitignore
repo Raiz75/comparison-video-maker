@@ -10,3 +10,5 @@ assets/tts/*
 !assets/tts/.gitkeep
 output/*
 !output/.gitkeep
+assets/images/*
+!assets/images/.gitkeep
